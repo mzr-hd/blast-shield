@@ -1,0 +1,102 @@
+{
+  "incident": "Runtime Contract Drift on Payment API",
+  "docDrift": {
+    "file": "demo-target/docs/api-spec.md",
+    "line": 12,
+    "before": "\"status\": \"success\"",
+    "after": "\"paymentStatus\": \"success\"",
+    "diff": "- \"status\": \"success\"\n+ \"paymentStatus\": \"success\""
+  },
+  "testTrap": {
+    "file": "demo-target/tests/checkout.test.ts",
+    "line": 8,
+    "reason": "Legacy mock asserts outdated 'status' field, hiding runtime contract breakage",
+    "snippet": "vi.spyOn(paymentApi, 'processPayment').mockResolvedValue({ status: 'success', transactionId: 'TX_MOCK_123' })"
+  },
+  "failureReplay": [
+    {
+      "step": 1,
+      "location": "src/api/payment.ts:7",
+      "event": "Returns { paymentStatus: 'success', transactionId: 'TX_NEW_456' }",
+      "status": "ok"
+    },
+    {
+      "step": 2,
+      "location": "src/services/checkout.ts:9",
+      "event": "Evaluates result.status — resolves to undefined (field does not exist)",
+      "status": "error"
+    },
+    {
+      "step": 3,
+      "location": "src/services/checkout.ts:14",
+      "event": "Throws Error('Payment verification failed')",
+      "status": "error"
+    },
+    {
+      "step": 4,
+      "location": "src/services/notification.ts:1",
+      "event": "sendReceipt never executed; receipt dropped",
+      "status": "blocked"
+    }
+  ],
+  "remediationOptions": [
+    {
+      "id": "strategy-a",
+      "name": "Compatibility Adapter",
+      "subtitle": "Dual-Read",
+      "philosophy": "Backward Compatibility",
+      "filesAffected": 1,
+      "tradeOff": "Leaves technical debt; requires a future cleanup task.",
+      "before": "if (result.status === 'success') {",
+      "after": "if ((result.paymentStatus || result.status) === 'success') {",
+      "diffLines": [
+        { "type": "remove", "content": "if (result.status === 'success') {" },
+        { "type": "add",    "content": "if ((result.paymentStatus || result.status) === 'success') {" }
+      ]
+    },
+    {
+      "id": "strategy-b",
+      "name": "Strict Contract Migration",
+      "subtitle": "Breaking Change",
+      "philosophy": "Simplicity & Cleanliness",
+      "filesAffected": 3,
+      "tradeOff": "Breaks any unmigrated external v1 consumers still sending 'status'.",
+      "before": "if (result.status === 'success') {",
+      "after": "if (result.paymentStatus === 'success') {",
+      "diffLines": [
+        { "type": "context", "content": "// checkout.ts" },
+        { "type": "remove",  "content": "if (result.status === 'success') {" },
+        { "type": "add",     "content": "if (result.paymentStatus === 'success') {" },
+        { "type": "context", "content": "" },
+        { "type": "context", "content": "// api-spec.md" },
+        { "type": "remove",  "content": "  \"status\": \"success\"" },
+        { "type": "add",     "content": "  \"paymentStatus\": \"success\"" }
+      ]
+    },
+    {
+      "id": "strategy-c",
+      "name": "Contract Boundary Guard",
+      "subtitle": "Runtime Assertion",
+      "philosophy": "Resilience & Boundary Safety",
+      "filesAffected": 2,
+      "tradeOff": "Higher initial complexity; introduces schema parsing overhead.",
+      "before": "const result = await processPayment(cartTotal) as any;\nif (result.status === 'success') {",
+      "after": "const result = await processPayment(cartTotal) as any;\nassertPayment(result);\nif (result.paymentStatus === 'success') {",
+      "diffLines": [
+        { "type": "add",     "content": "function assertPayment(res: any): asserts res is { paymentStatus: string } {" },
+        { "type": "add",     "content": "  if (typeof res.paymentStatus !== 'string')" },
+        { "type": "add",     "content": "    throw new Error('Schema violation: missing paymentStatus');" },
+        { "type": "add",     "content": "}" },
+        { "type": "context", "content": "" },
+        { "type": "context", "content": "const result = await processPayment(cartTotal) as any;" },
+        { "type": "add",     "content": "assertPayment(result);" },
+        { "type": "remove",  "content": "if (result.status === 'success') {" },
+        { "type": "add",     "content": "if (result.paymentStatus === 'success') {" }
+      ]
+    }
+  ],
+  "verification": {
+    "before": "FAIL — contract-drift.test.ts: Payment verification failed",
+    "after": "PASS — 2 passed, 0 failed"
+  }
+}

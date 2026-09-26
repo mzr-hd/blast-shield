@@ -1,2 +1,10 @@
 @import "tailwindcss";
 @import "@xyflow/react/dist/style.css";
+
+@theme {
+  --color-rg-base: #0A0E17;
+  --color-rg-surface: #111827;
+  --color-rg-border: #1F2937;
+  --color-rg-cyan: #22D3EE;
+  --color-rg-cyan-border: #0891B2;
+}
