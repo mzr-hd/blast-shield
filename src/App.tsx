@@ -19,8 +19,8 @@ interface RemediationOption {
   subtitle: string
   philosophy: string
   filesAffected: number
-  linesChanged?: number
-  legacySupport?: string
+  linesChanged?: string
+  legacySupport?: boolean
   risk?: string
   technicalDebt?: string
   tradeOff: string
@@ -86,12 +86,6 @@ function StepStatusIcon({ status }: { status: FailureStep['status'] }) {
 }
 
 // ─── DiffViewer ────────────────────────────────────────────────────────────────
-
-const DIFF_CODE_FILE: Record<string, string> = {
-  'strategy-a': 'checkout.ts — unified diff',
-  'strategy-b': 'checkout.ts + api-spec.md — unified diff',
-  'strategy-c': 'checkout.ts — unified diff',
-}
 
 function DiffViewer({ lines, codeFile }: { lines: DiffLine[]; codeFile?: string }) {
   return (
@@ -167,7 +161,7 @@ function ArchitectureFlow() {
                     <p className={`text-xs font-semibold transition-colors duration-300 ${isFailing ? c.text : 'text-slate-300'}`}>
                       {node.label}
                     </p>
-                    <code className="text-[10px] text-slate-500 font-mono">{node.sublabel}</code>
+                    <code className="text-[10px] text-slate-400 font-mono">{node.sublabel}</code>
                   </div>
                   {isFailing && (
                     <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border font-mono ${
@@ -197,7 +191,9 @@ function ArchitectureFlow() {
         <div className="rounded-[6px] border border-red-500/30 bg-red-950/20 p-2.5 flex items-start gap-2">
           <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
           <p className="text-[11px] text-red-300 leading-relaxed font-mono">
-            Cascade triggered — <span className="text-red-200 font-semibold">2 services</span> degraded, <span className="text-amber-300">1 blocked</span>
+            Cascade triggered — <span className="text-red-200 font-semibold">2 services</span>{' '}
+            <span className="inline-flex items-center gap-0.5"><XCircle className="w-3 h-3 text-red-400 shrink-0" /> degraded</span>,{' '}
+            <span className="inline-flex items-center gap-0.5 text-amber-300"><MinusCircle className="w-3 h-3 shrink-0" /> 1 blocked</span>
           </p>
         </div>
       )}
@@ -266,7 +262,7 @@ function FailureReplaySection() {
               }`}
             >
               <div className="flex items-center gap-2 mt-0.5 shrink-0">
-                <span className="text-[11px] font-mono text-slate-500 w-4 tabular-nums">{padded}</span>
+                <span className="text-[11px] font-mono text-slate-400 w-4 tabular-nums">{padded}</span>
                 {revealed ? (
                   <StepStatusIcon status={step.status} />
                 ) : (
@@ -298,6 +294,7 @@ interface CardMetric {
   label: string
   value: string
   accent?: string
+  statusIcon?: 'pass' | 'fail' | 'warn'
 }
 
 interface RemediationCard {
@@ -313,29 +310,24 @@ const CARD_PHILOSOPHY_COLOR: Record<string, { badge: string; border: string; act
   'Resilience & Boundary Safety': { badge: 'text-emerald-300 bg-emerald-500/10 border-emerald-500/30', border: 'border-[#1F2937]', activeBorder: 'border-emerald-500/50' },
 }
 
-const TEST_STATUS: Record<string, { label: string; cls: string }> = {
-  'strategy-a': { label: 'PASS', cls: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' },
-  'strategy-b': { label: 'PASS', cls: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' },
-  'strategy-c': { label: 'PASS', cls: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' },
-}
-
-const LEGACY_SUPPORT: Record<string, string> = {
-  'strategy-a': 'Yes — dual-read',
-  'strategy-b': 'No — breaking',
-  'strategy-c': 'Partial — guarded',
+const TEST_STATUS: Record<string, { label: string; cls: string; icon: 'pass' | 'fail' | 'warn' }> = {
+  'strategy-a': { label: 'PASS', cls: 'text-[#10B981] bg-emerald-500/10 border-[#10B981] border-solid', icon: 'pass' },
+  'strategy-b': { label: 'PASS', cls: 'text-[#10B981] bg-emerald-500/10 border-[#10B981] border-solid', icon: 'pass' },
+  'strategy-c': { label: 'PASS', cls: 'text-[#10B981] bg-emerald-500/10 border-[#10B981] border-solid', icon: 'pass' },
 }
 
 const RISK_COLOR: Record<string, string> = {
-  LOW:    'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
-  MEDIUM: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
-  HIGH:   'text-red-400 bg-red-500/10 border-red-500/30',
+  Low:      'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
+  Medium:   'text-amber-400 bg-amber-500/10 border-amber-500/30',
+  Moderate: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
+  High:     'text-red-400 bg-red-500/10 border-red-500/30',
 }
 
 function cardMetrics(opt: RemediationOption): CardMetric[] {
-  const ts = TEST_STATUS[opt.id] ?? { label: 'PASS', cls: 'text-emerald-400' }
+  const ts = TEST_STATUS[opt.id] ?? { label: 'PASS', cls: 'text-[#10B981] bg-emerald-500/10 border-[#10B981] border-solid', icon: 'pass' as const }
   return [
     { label: 'Files changed', value: String(opt.filesAffected) },
-    { label: 'Test status', value: ts.label, accent: ts.cls },
+    { label: 'Test status', value: ts.label, accent: ts.cls, statusIcon: ts.icon },
     { label: 'Risk', value: opt.risk ?? '—', accent: opt.risk ? RISK_COLOR[opt.risk] : undefined },
   ]
 }
@@ -371,8 +363,11 @@ function RemediationCard({ option: opt, index, selected, onSelect }: Remediation
       <div className="grid grid-cols-1 gap-1.5">
         {metrics.map((m) => (
           <div key={m.label} className="flex items-center justify-between gap-2">
-            <span className="text-[10px] text-slate-500 font-sans">{m.label}</span>
-            <span className={`text-[10px] font-mono font-semibold tabular-nums px-1.5 py-0.5 rounded border ${m.accent ?? 'text-slate-300 bg-[#0A0E17] border-[#1F2937]'}`}>
+            <span className="text-[10px] text-slate-400 font-sans">{m.label}</span>
+            <span className={`text-[10px] font-mono font-semibold tabular-nums px-1.5 py-0.5 rounded border flex items-center gap-1 ${m.accent ?? 'text-slate-300 bg-[#0A0E17] border-[#1F2937]'}`}>
+              {m.statusIcon === 'pass' && <CheckCircle2 className="w-3 h-3 shrink-0" />}
+              {m.statusIcon === 'fail' && <XCircle className="w-3 h-3 shrink-0" />}
+              {m.statusIcon === 'warn' && <AlertTriangle className="w-3 h-3 shrink-0" />}
               {m.value}
             </span>
           </div>
@@ -382,7 +377,7 @@ function RemediationCard({ option: opt, index, selected, onSelect }: Remediation
       {/* Trade-off */}
       <div className="flex items-start gap-1.5 pt-1 border-t border-[#1F2937]">
         <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0 mt-0.5" />
-        <p className="text-[10px] text-slate-500 leading-relaxed">{opt.tradeOff}</p>
+        <p className="text-[10px] text-slate-400 leading-relaxed">{opt.tradeOff}</p>
       </div>
     </button>
   )
@@ -436,7 +431,7 @@ function RemediationLabSection() {
             </p>
             <p className="text-[11px] text-slate-400 mt-0.5 font-sans">{opt.philosophy}</p>
           </div>
-          <div className="text-[11px] text-slate-500 font-mono shrink-0">
+          <div className="text-[11px] text-slate-400 font-mono shrink-0">
             <span className="text-slate-200 font-semibold">{opt.filesAffected}</span> file{opt.filesAffected !== 1 ? 's' : ''} changed
           </div>
         </div>
@@ -446,27 +441,27 @@ function RemediationLabSection() {
           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Consequence Preview</p>
           <div className="grid grid-cols-2 gap-x-6 gap-y-2">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[10px] text-slate-500">Files affected</span>
+              <span className="text-[10px] text-slate-400">Files affected</span>
               <span className="text-[10px] font-mono font-semibold text-slate-200 bg-[#111827] border border-[#1F2937] px-1.5 py-0.5 rounded">{opt.filesAffected}</span>
             </div>
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[10px] text-slate-500">Lines changed</span>
+              <span className="text-[10px] text-slate-400">Lines changed</span>
               <span className="text-[10px] font-mono font-semibold text-slate-200 bg-[#111827] border border-[#1F2937] px-1.5 py-0.5 rounded">
-                {opt.linesChanged != null ? opt.linesChanged : opt.diffLines.filter(l => l.type !== 'context').length}
+                {opt.linesChanged ?? '—'}
               </span>
             </div>
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[10px] text-slate-500">Legacy support</span>
+              <span className="text-[10px] text-slate-400">Legacy support</span>
               <span className={`text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded border ${
-                opt.legacySupport === 'Full' ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' :
-                opt.legacySupport === 'None' ? 'text-red-400 bg-red-500/10 border-red-500/30' :
+                opt.legacySupport === true ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' :
+                opt.legacySupport === false ? 'text-red-400 bg-red-500/10 border-red-500/30' :
                 'text-slate-400 bg-[#111827] border-[#1F2937]'
               }`}>
-                {opt.legacySupport ?? LEGACY_SUPPORT[opt.id] ?? '—'}
+                {opt.legacySupport == null ? '—' : opt.legacySupport ? 'Yes' : 'No'}
               </span>
             </div>
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[10px] text-slate-500">Technical debt</span>
+              <span className="text-[10px] text-slate-400">Technical debt</span>
               <span className="text-[10px] font-mono font-semibold text-slate-200 bg-[#111827] border border-[#1F2937] px-1.5 py-0.5 rounded">
                 {opt.technicalDebt != null ? opt.technicalDebt : (opt.id === 'strategy-a' ? 'High' : opt.id === 'strategy-b' ? 'Low' : 'Medium')}
               </span>
@@ -479,7 +474,7 @@ function RemediationLabSection() {
         </div>
 
         {/* Unified diff viewer */}
-        <DiffViewer lines={opt.diffLines} codeFile={opt.codeFile ?? DIFF_CODE_FILE[opt.id]} />
+        <DiffViewer lines={opt.diffLines} codeFile={opt.codeFile} />
 
         {/* Verification Gate */}
         <div className="flex items-center gap-3 pt-1">
@@ -502,20 +497,20 @@ function RemediationLabSection() {
           {/* Status transition */}
           {applied ? (
             <div className="flex items-center gap-2 text-[11px] font-mono">
-              <span className="flex items-center gap-1 text-red-400 line-through opacity-60">
-                <XCircle className="w-3.5 h-3.5" />
-                ❌ {analysisData.verification.before}
+              <span className="flex items-center gap-1 text-[#EF4444] line-through opacity-60 border border-dashed border-[#EF4444] px-1.5 py-0.5 rounded">
+                <XCircle className="w-3.5 h-3.5 shrink-0" />
+                FAIL — {analysisData.verification.before}
               </span>
               <ChevronRight className="w-3 h-3 text-slate-600" />
-              <span className="flex items-center gap-1 text-emerald-400">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                ✅ {analysisData.verification.after}
+              <span className="flex items-center gap-1 text-[#10B981] border border-solid border-[#10B981] px-1.5 py-0.5 rounded">
+                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                PASS — {analysisData.verification.after}
               </span>
             </div>
           ) : (
-            <div className="flex items-center gap-1 text-[11px] font-mono text-red-400">
-              <XCircle className="w-3.5 h-3.5" />
-              ❌ {analysisData.verification.before}
+            <div className="flex items-center gap-1 text-[11px] font-mono text-[#EF4444] border border-dashed border-[#EF4444] px-1.5 py-0.5 rounded">
+              <XCircle className="w-3.5 h-3.5 shrink-0" />
+              FAIL — {analysisData.verification.before}
             </div>
           )}
         </div>
@@ -545,7 +540,7 @@ export default function App() {
                 Remediation Lab
               </span>
             </h1>
-            <p className="text-[11px] text-slate-500 font-mono">demo-target/ · v2.4.1 · loaded</p>
+            <p className="text-[11px] text-slate-400 font-mono">demo-target/ · v2.4.1 · loaded</p>
           </div>
         </div>
 
