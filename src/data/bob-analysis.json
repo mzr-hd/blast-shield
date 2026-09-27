@@ -11,7 +11,7 @@
     "file": "demo-target/tests/checkout.test.ts",
     "line": 8,
     "reason": "Legacy mock asserts outdated 'status' field, hiding runtime contract breakage",
-    "snippet": "vi.spyOn(paymentApi, 'processPayment').mockResolvedValue({ status: 'success', transactionId: 'TX_MOCK_123' })"
+    "snippet": "vi.spyOn(paymentGateway, 'processPayment').mockResolvedValue({ status: 'success' })"
   },
   "failureReplay": [
     {
@@ -46,6 +46,10 @@
       "subtitle": "Dual-Read",
       "philosophy": "Backward Compatibility",
       "filesAffected": 1,
+      "codeFile": "src/services/checkout.ts",
+      "risk": "LOW",
+      "linesChanged": 2,
+      "legacySupport": "Full",
       "tradeOff": "Leaves technical debt; requires a future cleanup task.",
       "before": "if (result.status === 'success') {",
       "after": "if ((result.paymentStatus || result.status) === 'success') {",
@@ -60,6 +64,10 @@
       "subtitle": "Breaking Change",
       "philosophy": "Simplicity & Cleanliness",
       "filesAffected": 3,
+      "codeFile": "src/services/checkout.ts",
+      "risk": "MEDIUM",
+      "linesChanged": 8,
+      "legacySupport": "None",
       "tradeOff": "Breaks any unmigrated external v1 consumers still sending 'status'.",
       "before": "if (result.status === 'success') {",
       "after": "if (result.paymentStatus === 'success') {",
@@ -79,6 +87,10 @@
       "subtitle": "Runtime Assertion",
       "philosophy": "Resilience & Boundary Safety",
       "filesAffected": 2,
+      "codeFile": "src/services/checkout.ts",
+      "risk": "LOW",
+      "linesChanged": 16,
+      "legacySupport": "Full",
       "tradeOff": "Higher initial complexity; introduces schema parsing overhead.",
       "before": "const result = await processPayment(cartTotal) as any;\nif (result.status === 'success') {",
       "after": "const result = await processPayment(cartTotal) as any;\nassertPayment(result);\nif (result.paymentStatus === 'success') {",

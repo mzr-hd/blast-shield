@@ -20,7 +20,8 @@ interface RemediationOption {
   philosophy: string
   filesAffected: number
   linesChanged?: number
-  legacySupport?: boolean
+  legacySupport?: string
+  risk?: string
   technicalDebt?: string
   tradeOff: string
   before: string
@@ -324,12 +325,18 @@ const LEGACY_SUPPORT: Record<string, string> = {
   'strategy-c': 'Partial — guarded',
 }
 
+const RISK_COLOR: Record<string, string> = {
+  LOW:    'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
+  MEDIUM: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
+  HIGH:   'text-red-400 bg-red-500/10 border-red-500/30',
+}
+
 function cardMetrics(opt: RemediationOption): CardMetric[] {
   const ts = TEST_STATUS[opt.id] ?? { label: 'PASS', cls: 'text-emerald-400' }
   return [
     { label: 'Files changed', value: String(opt.filesAffected) },
     { label: 'Test status', value: ts.label, accent: ts.cls },
-    { label: 'Legacy support', value: LEGACY_SUPPORT[opt.id] ?? '—' },
+    { label: 'Risk', value: opt.risk ?? '—', accent: opt.risk ? RISK_COLOR[opt.risk] : undefined },
   ]
 }
 
@@ -450,15 +457,13 @@ function RemediationLabSection() {
             </div>
             <div className="flex items-center justify-between gap-2">
               <span className="text-[10px] text-slate-500">Legacy support</span>
-              {opt.legacySupport != null ? (
-                <span className={`text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded border ${opt.legacySupport ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' : 'text-red-400 bg-red-500/10 border-red-500/30'}`}>
-                  {opt.legacySupport ? 'Yes' : 'No'}
-                </span>
-              ) : (
-                <span className="text-[10px] font-mono font-semibold text-slate-400 bg-[#111827] border border-[#1F2937] px-1.5 py-0.5 rounded">
-                  {LEGACY_SUPPORT[opt.id] ?? '—'}
-                </span>
-              )}
+              <span className={`text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded border ${
+                opt.legacySupport === 'Full' ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' :
+                opt.legacySupport === 'None' ? 'text-red-400 bg-red-500/10 border-red-500/30' :
+                'text-slate-400 bg-[#111827] border-[#1F2937]'
+              }`}>
+                {opt.legacySupport ?? LEGACY_SUPPORT[opt.id] ?? '—'}
+              </span>
             </div>
             <div className="flex items-center justify-between gap-2">
               <span className="text-[10px] text-slate-500">Technical debt</span>
@@ -540,7 +545,7 @@ export default function App() {
                 Remediation Lab
               </span>
             </h1>
-            <p className="text-[11px] text-slate-500 font-mono">demo-target/checkout.ts · v2.4.1 · loaded</p>
+            <p className="text-[11px] text-slate-500 font-mono">demo-target/ · v2.4.1 · loaded</p>
           </div>
         </div>
 
@@ -549,7 +554,7 @@ export default function App() {
             Demo Loader <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block ml-0.5" />
           </span>
           <span className="flex items-center gap-1.5 text-[11px] text-[#22D3EE] bg-[#22D3EE]/10 border border-[#0891B2]/40 px-2.5 py-1 rounded-[6px] font-semibold">
-            ● Bob Verified
+            ● IBM Bob 2.0 Agent Mode
           </span>
         </div>
       </header>
@@ -558,12 +563,7 @@ export default function App() {
       <div className="bg-red-950/30 border-b border-red-500/30 px-6 py-2 flex items-center gap-3 shrink-0">
         <span className="text-[11px] font-bold text-red-400 font-mono tracking-widest uppercase">🔴 INCIDENT</span>
         <span className="w-px h-3 bg-red-500/30" />
-        <span className="text-[11px] text-red-300 font-mono">
-          Payment Contract Drift —{' '}
-          <code className="text-red-200 bg-red-500/10 px-1 rounded">status</code>
-          <span className="text-slate-500 mx-1">→</span>
-          <code className="text-emerald-300 bg-emerald-500/10 px-1 rounded">paymentStatus</code>
-        </span>
+        <span className="text-[11px] text-red-300 font-mono">{analysisData.incident}</span>
         <span className="ml-auto flex items-center gap-1.5 text-[10px] text-amber-400 font-mono">
           <AlertTriangle className="w-3 h-3" />
           Contract Drift Detected
@@ -591,7 +591,10 @@ export default function App() {
               <FileWarning className="w-3.5 h-3.5 text-[#F59E0B]" />
               <p className="text-[10px] font-bold uppercase tracking-widest text-[#F59E0B]">Documentation Drift Detected</p>
             </div>
-            <code className="block text-[10px] text-slate-400 font-mono">{analysisData.docDrift.file}</code>
+            <div className="flex items-center gap-2">
+              <code className="text-[10px] text-slate-400 font-mono">{analysisData.docDrift.file}</code>
+              <span className="text-[10px] font-mono text-slate-500 bg-[#0A0E17] border border-[#1F2937] px-1.5 py-0.5 rounded">L{analysisData.docDrift.line}</span>
+            </div>
             <div className="space-y-0.5 font-mono text-xs">
               {analysisData.docDrift.diff.split('\n').map((line, i) => (
                 <div
@@ -615,6 +618,14 @@ export default function App() {
             </div>
             <code className="block text-[10px] text-slate-400 font-mono">{analysisData.testTrap.file}</code>
             <p className="text-xs text-slate-300 leading-relaxed">{analysisData.testTrap.reason}</p>
+            <div className="rounded-[6px] border border-[#1F2937] bg-black/60 overflow-hidden font-mono text-xs">
+              <div className="px-3 py-1 bg-[#111827]/80 border-b border-[#1F2937] text-[10px] text-slate-500">
+                line {analysisData.testTrap.line}
+              </div>
+              <div className="p-3 text-red-300 bg-red-950/30 whitespace-pre-wrap break-all leading-relaxed">
+                {analysisData.testTrap.snippet}
+              </div>
+            </div>
           </div>
         </div>
       </div>
