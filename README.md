@@ -231,8 +231,8 @@ workflow using a deterministic sample project.
 ### 1. Clone the repository
 
 ```bash
-git clone <repository-url>
-cd ReplayGuard
+git clone https://github.com/mzr-hd/replayguard.git
+cd replayguard
 ```
 
 ### 2. Install the dashboard dependencies
@@ -315,7 +315,7 @@ ReplayGuard/
 
 A deployed version of ReplayGuard is available through the hackathon submission.
 
-**Live Demo:** See the submission URL on the lablab.ai project page.
+**Live Demo:** https://replayguard-mzr-hd.vercel.app/
 
 ---
 
